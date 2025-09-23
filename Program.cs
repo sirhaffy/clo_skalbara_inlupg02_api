@@ -1,9 +1,10 @@
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.DataModel;
+using Amazon.Lambda.Serialization.SystemTextJson;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add AWS Lambda support
+// Add AWS Lambda support with proper JSON serialization
 builder.Services.AddAWSLambdaHosting(LambdaEventSource.RestApi);
 
 // Add DynamoDB
