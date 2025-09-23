@@ -1,0 +1,52 @@
+using Amazon.DynamoDBv2;
+using Amazon.DynamoDBv2.DataModel;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Add AWS Lambda support
+builder.Services.AddAWSLambdaHosting(LambdaEventSource.RestApi);
+
+// Add DynamoDB
+builder.Services.AddAWSService<IAmazonDynamoDB>();
+builder.Services.AddScoped<IDynamoDBContext, DynamoDBContext>();
+
+// Add services
+builder.Services.AddScoped<IItemService, ItemService>();
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline
+app.UseRouting();
+
+// API Routes
+app.MapGet("/items", async (IItemService itemService) =>
+{
+    var items = await itemService.GetAllItemsAsync();
+    return Results.Ok(items);
+});
+
+app.MapGet("/items/{id}", async (string id, IItemService itemService) =>
+{
+    var item = await itemService.GetItemAsync(id);
+    return item != null ? Results.Ok(item) : Results.NotFound();
+});
+
+app.MapPost("/items", async (ItemRequest request, IItemService itemService) =>
+{
+    var item = await itemService.CreateItemAsync(request);
+    return Results.Created($"/items/{item.Id}", item);
+});
+
+app.MapPut("/items/{id}", async (string id, ItemRequest request, IItemService itemService) =>
+{
+    var item = await itemService.UpdateItemAsync(id, request);
+    return item != null ? Results.Ok(item) : Results.NotFound();
+});
+
+app.MapDelete("/items/{id}", async (string id, IItemService itemService) =>
+{
+    var success = await itemService.DeleteItemAsync(id);
+    return success ? Results.NoContent() : Results.NotFound();
+});
+
+app.Run();
