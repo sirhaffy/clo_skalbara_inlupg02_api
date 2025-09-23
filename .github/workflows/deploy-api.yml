@@ -82,16 +82,39 @@ jobs:
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-    - name: Update Lambda function
+    - name: Update Lambda function (if exists)
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        aws lambda update-function-code \
-          --function-name $LAMBDA_FUNCTION_NAME \
-          --image-uri $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        # Check if Lambda function exists
+        if aws lambda get-function --function-name $LAMBDA_FUNCTION_NAME 2>/dev/null; then
+          echo "✅ Lambda function exists - updating code..."
+          aws lambda update-function-code \
+            --function-name $LAMBDA_FUNCTION_NAME \
+            --image-uri $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-    - name: Wait for Lambda update to complete
+          echo "⏳ Waiting for Lambda update to complete..."
+          aws lambda wait function-updated \
+            --function-name $LAMBDA_FUNCTION_NAME
+          echo "✅ Lambda function updated successfully!"
+        else
+          echo "⚠️  Lambda function not found - this is expected on first run"
+          echo "🔄 ECR image has been pushed and is ready for Terraform to create the Lambda function"
+          echo "💡 Run the IaC workflow after this completes to create the Lambda function"
+        fi
+
+    - name: Output deployment info
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
       run: |
-        aws lambda wait function-updated \
-          --function-name $LAMBDA_FUNCTION_NAME
+        echo "🚀 Deployment Summary:"
+        echo "📦 ECR Repository: $ECR_REPOSITORY"
+        echo "🖼️  Image URI: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+        echo "🖼️  Latest Tag: $ECR_REGISTRY/$ECR_REPOSITORY:latest"
+        echo "⚡ Lambda Function: $LAMBDA_FUNCTION_NAME"
+        echo ""
+        echo "Next steps:"
+        echo "1. If Lambda function doesn't exist, run IaC workflow to create infrastructure"
+        echo "2. Future API deployments will automatically update the Lambda function"

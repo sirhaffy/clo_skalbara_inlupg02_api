@@ -50,4 +50,5 @@ app.MapDelete("/items/{id}", async (string id, IItemService itemService) =>
     return success ? Results.NoContent() : Results.NotFound();
 });
 
+// Start the application
 app.Run();
