@@ -25,6 +25,7 @@ app.MapGet("/items", async (IItemService itemService) =>
     return Results.Ok(items);
 });
 
+// REST API endpoints for CRUD operations
 app.MapGet("/items/{id}", async (string id, IItemService itemService) =>
 {
     var item = await itemService.GetItemAsync(id);

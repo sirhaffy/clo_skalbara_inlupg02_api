@@ -12,8 +12,6 @@ on:
 
 env:
   AWS_REGION: eu-north-1
-  ECR_REPOSITORY: clofresva_skalbara_upg02-api
-  LAMBDA_FUNCTION_NAME: clofresva_skalbara_upg02-api-lambda
 
 jobs:
   deploy:
@@ -24,17 +22,39 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Setup .NET 9
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '9.0.x'
-
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ${{ env.AWS_REGION }}
+
+    - name: Get configuration from AWS
+      run: |
+        # Get ECR repository name from AWS
+        ECR_REPO=$(aws ecr describe-repositories --query 'repositories[?repositoryName==`clofresva-skalbara-upg02-api`].repositoryName' --output text)
+        if [ -z "$ECR_REPO" ]; then
+          echo "ECR repository not found, using default name"
+          ECR_REPO="clofresva-skalbara-upg02-api"
+        fi
+
+        # Get Lambda function name from AWS
+        LAMBDA_NAME=$(aws lambda list-functions --query 'Functions[?FunctionName==`clofresva-skalbara-upg02-api-lambda`].FunctionName' --output text)
+        if [ -z "$LAMBDA_NAME" ]; then
+          echo "Lambda function not found, using default name"
+          LAMBDA_NAME="clofresva-skalbara-upg02-api-lambda"
+        fi
+
+        # Export to environment for subsequent steps
+        echo "ECR_REPOSITORY=$ECR_REPO" >> $GITHUB_ENV
+        echo "LAMBDA_FUNCTION_NAME=$LAMBDA_NAME" >> $GITHUB_ENV
+        echo "Using ECR repository: $ECR_REPO"
+        echo "Using Lambda function: $LAMBDA_NAME"
+
+    - name: Setup .NET 9
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
 
     - name: Login to Amazon ECR
       id: login-ecr
