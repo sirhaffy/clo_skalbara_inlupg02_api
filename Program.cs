@@ -18,7 +18,7 @@ var app = builder.Build();
 // Configure the HTTP request pipeline
 app.UseRouting();
 
-// API Routes
+// API Routes for CRUD operations
 app.MapGet("/items", async (IItemService itemService) =>
 {
     var items = await itemService.GetAllItemsAsync();

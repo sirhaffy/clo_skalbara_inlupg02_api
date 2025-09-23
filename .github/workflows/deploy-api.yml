@@ -64,16 +64,13 @@ jobs:
       run: dotnet restore ApiLambda.csproj
 
     - name: Build and publish
-      run: |
-        cd API
-        dotnet publish -c Release -r linux-x64 --self-contained
+      run: dotnet publish -c Release -r linux-x64 --self-contained
 
     - name: Build Docker image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         IMAGE_TAG: ${{ github.sha }}
       run: |
-        cd API
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
 
