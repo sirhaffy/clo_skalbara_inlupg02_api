@@ -4,11 +4,11 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'API/**'
+      - '**'
   pull_request:
     branches: [ main ]
     paths:
-      - 'API/**'
+      - '**'
 
 env:
   AWS_REGION: eu-north-1
@@ -41,7 +41,7 @@ jobs:
       uses: aws-actions/amazon-ecr-login@v2
 
     - name: Restore dependencies
-      run: dotnet restore API/ApiLambda.csproj
+      run: dotnet restore ApiLambda.csproj
 
     - name: Build and publish
       run: |

@@ -1,7 +1,6 @@
 # JSON API Lambda
 
 Minimal .NET 9 Lambda function with REST API for DynamoDB operations.
-JSON API for the App to comunicate with DynamoDB, to store and fetch data.
 
 ## Features
 - **AOT Compilation** for faster cold starts
