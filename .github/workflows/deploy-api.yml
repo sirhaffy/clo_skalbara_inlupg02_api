@@ -2,15 +2,15 @@ name: Deploy API Lambda
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths:
-      - 'API/**'
-      - '.github/workflows/deploy-api.yml'
+      - "API/**"
+      - ".github/workflows/deploy-api.yml"
   pull_request:
-    branches: [ main ]
+    branches: [main]
     paths:
-      - 'API/**'
-      - '.github/workflows/deploy-api.yml'
+      - "API/**"
+      - ".github/workflows/deploy-api.yml"
 
 env:
   AWS_REGION: eu-north-1
@@ -21,102 +21,131 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
 
-    - name: Get configuration from AWS
-      run: |
-        # Get ECR repository name from AWS
-        ECR_REPO=$(aws ecr describe-repositories --query 'repositories[?repositoryName==`clofresva-skalbara-upg02-api`].repositoryName' --output text)
-        if [ -z "$ECR_REPO" ]; then
-          echo "ECR repository not found, using default name"
-          ECR_REPO="clofresva-skalbara-upg02-api"
-        fi
+      - name: Get configuration from AWS
+        run: |
+          # Get ECR repository name from AWS
+          ECR_REPO=$(aws ecr describe-repositories --query 'repositories[?repositoryName==`clofresva-skalbara-upg02-api`].repositoryName' --output text)
+          if [ -z "$ECR_REPO" ]; then
+            echo "ECR repository not found, using default name"
+            ECR_REPO="clofresva-skalbara-upg02-api"
+          fi
 
-        # Get Lambda function name from AWS
-        LAMBDA_NAME=$(aws lambda list-functions --query 'Functions[?FunctionName==`clofresva-skalbara-upg02-api-lambda`].FunctionName' --output text)
-        if [ -z "$LAMBDA_NAME" ]; then
-          echo "Lambda function not found, using default name"
-          LAMBDA_NAME="clofresva-skalbara-upg02-api-lambda"
-        fi
+          # Get Lambda function name from AWS
+          LAMBDA_NAME=$(aws lambda list-functions --query 'Functions[?FunctionName==`clofresva-skalbara-upg02-api-lambda`].FunctionName' --output text)
+          if [ -z "$LAMBDA_NAME" ]; then
+            echo "Lambda function not found, using default name"
+            LAMBDA_NAME="clofresva-skalbara-upg02-api-lambda"
+          fi
 
-        # Export to environment for subsequent steps
-        echo "ECR_REPOSITORY=$ECR_REPO" >> $GITHUB_ENV
-        echo "LAMBDA_FUNCTION_NAME=$LAMBDA_NAME" >> $GITHUB_ENV
-        echo "Using ECR repository: $ECR_REPO"
-        echo "Using Lambda function: $LAMBDA_NAME"
+          # Export to environment for subsequent steps
+          echo "ECR_REPOSITORY=$ECR_REPO" >> $GITHUB_ENV
+          echo "LAMBDA_FUNCTION_NAME=$LAMBDA_NAME" >> $GITHUB_ENV
+          echo "Using ECR repository: $ECR_REPO"
+          echo "Using Lambda function: $LAMBDA_NAME"
 
-    - name: Setup .NET 9
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '9.0.x'
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "9.0.x"
 
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v2
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-    - name: Restore dependencies
-      run: dotnet restore ApiLambda.csproj
+      - name: Restore dependencies
+        run: dotnet restore ApiLambda.csproj
 
-    - name: Build and publish
-      run: dotnet publish -c Release
+      - name: Build and publish
+        run: dotnet publish -c Release
 
-    - name: Build Docker image
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        IMAGE_TAG: ${{ github.sha }}
-      run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+      - name: Build Docker image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # Build image once and tag it with both SHA and latest
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-    - name: Push image to Amazon ECR
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        IMAGE_TAG: ${{ github.sha }}
-      run: |
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+      - name: Push image to Amazon ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-    - name: Update Lambda function (if exists)
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        IMAGE_TAG: ${{ github.sha }}
-      run: |
-        # Check if Lambda function exists
-        if aws lambda get-function --function-name $LAMBDA_FUNCTION_NAME 2>/dev/null; then
-          echo "✅ Lambda function exists - updating code..."
-          aws lambda update-function-code \
-            --function-name $LAMBDA_FUNCTION_NAME \
-            --image-uri $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+      - name: Update Lambda function (if exists)
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # Check if Lambda function exists
+          if aws lambda get-function --function-name $LAMBDA_FUNCTION_NAME 2>/dev/null; then
+            echo "✅ Lambda function exists - updating code..."
+            aws lambda update-function-code \
+              --function-name $LAMBDA_FUNCTION_NAME \
+              --image-uri $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-          echo "⏳ Waiting for Lambda update to complete..."
-          aws lambda wait function-updated \
-            --function-name $LAMBDA_FUNCTION_NAME
-          echo "✅ Lambda function updated successfully!"
-        else
-          echo "⚠️  Lambda function not found - this is expected on first run"
-          echo "🔄 ECR image has been pushed and is ready for Terraform to create the Lambda function"
-          echo "💡 Run the IaC workflow after this completes to create the Lambda function"
-        fi
+            echo "⏳ Waiting for Lambda update to complete..."
+            aws lambda wait function-updated \
+              --function-name $LAMBDA_FUNCTION_NAME
+            echo "✅ Lambda function updated successfully!"
 
-    - name: Output deployment info
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        IMAGE_TAG: ${{ github.sha }}
-      run: |
-        echo "🚀 Deployment Summary:"
-        echo "📦 ECR Repository: $ECR_REPOSITORY"
-        echo "🖼️  Image URI: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-        echo "🖼️  Latest Tag: $ECR_REGISTRY/$ECR_REPOSITORY:latest"
-        echo "⚡ Lambda Function: $LAMBDA_FUNCTION_NAME"
-        echo ""
-        echo "Next steps:"
-        echo "1. If Lambda function doesn't exist, run IaC workflow to create infrastructure"
-        echo "2. Future API deployments will automatically update the Lambda function"
+            # Update API Gateway deployment to reflect Lambda changes
+            echo "🔄 Updating API Gateway deployment..."
+            API_GATEWAY_ID=$(aws apigateway get-rest-apis --query 'items[?name==`clofresva-skalbara-upg02-api`].id' --output text)
+
+            if [ -n "$API_GATEWAY_ID" ] && [ "$API_GATEWAY_ID" != "None" ]; then
+              # Create new deployment
+              DEPLOYMENT_ID=$(aws apigateway create-deployment \
+                --rest-api-id $API_GATEWAY_ID \
+                --stage-name prod \
+                --description "Automated deployment after Lambda update - $(date)" \
+                --query 'id' --output text)
+              echo "✅ API Gateway deployment updated: $DEPLOYMENT_ID"
+            else
+              echo "⚠️  API Gateway not found - run IaC workflow first"
+            fi
+          else
+            echo "⚠️  Lambda function not found - this is expected on first run"
+            echo "🔄 ECR image has been pushed and is ready for Terraform to create the Lambda function"
+            echo "💡 Run the IaC workflow after this completes to create the Lambda function"
+          fi
+
+      - name: Output deployment info
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          echo "🚀 Deployment Summary:"
+          echo "📦 ECR Repository: $ECR_REPOSITORY"
+          echo "🖼️  Image URI: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          echo "🖼️  Latest Tag: $ECR_REGISTRY/$ECR_REPOSITORY:latest"
+          echo "⚡ Lambda Function: $LAMBDA_FUNCTION_NAME"
+
+          # Show API Gateway URL if it exists
+          API_GATEWAY_ID=$(aws apigateway get-rest-apis --query 'items[?name==`clofresva-skalbara-upg02-api`].id' --output text 2>/dev/null || echo "")
+          if [ -n "$API_GATEWAY_ID" ] && [ "$API_GATEWAY_ID" != "None" ]; then
+            API_URL="https://$API_GATEWAY_ID.execute-api.eu-north-1.amazonaws.com/prod"
+            echo "🌐 API Gateway URL: $API_URL"
+            echo "🔗 Test endpoints:"
+            echo "   - Health: $API_URL/"
+            echo "   - Items:  $API_URL/api/items"
+          fi
+
+          echo ""
+          echo "Next steps:"
+          echo "1. If Lambda function doesn't exist, run IaC workflow to create infrastructure"
+          echo "2. Future API deployments will automatically update the Lambda function"
+          echo "2. Future API deployments will automatically update the Lambda function"
