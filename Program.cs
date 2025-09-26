@@ -13,9 +13,23 @@ builder.Services.AddAWSLambdaHosting(LambdaEventSource.RestApi);
 
 // Add DynamoDB
 builder.Services.AddAWSService<IAmazonDynamoDB>();
-builder.Services.AddScoped<IDynamoDBContext, DynamoDBContext>();
 
-// Add services
+// Configure DynamoDB Context with custom table name mapping
+builder.Services.AddScoped<IDynamoDBContext>(provider =>
+{
+    var dynamoDbClient = provider.GetRequiredService<IAmazonDynamoDB>();
+    var tableName = Environment.GetEnvironmentVariable("DYNAMODB_TABLE_NAME") ?? "Items";
+
+    var logger = provider.GetRequiredService<ILogger<Program>>();
+    logger.LogInformation($"Using DynamoDB table name: {tableName}");
+
+    var config = new DynamoDBContextConfig
+    {
+        TableNamePrefix = string.Empty
+    };
+
+    return new DynamoDBContext(dynamoDbClient, config);
+});// Add services
 builder.Services.AddScoped<IItemService, ItemService>();
 
 // Add CORS for web requests

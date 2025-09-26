@@ -1,6 +1,6 @@
 using Amazon.DynamoDBv2.DataModel;
 
-[DynamoDBTable("Items")]
+[DynamoDBTable("clofresva-skalbara-upg02-items")]  // Use the actual table name directly
 public class Item
 {
     [DynamoDBHashKey]

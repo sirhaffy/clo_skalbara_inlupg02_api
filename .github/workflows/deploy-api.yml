@@ -4,11 +4,13 @@ on:
   push:
     branches: [ main ]
     paths:
-      - '**'
+      - 'API/**'
+      - '.github/workflows/deploy-api.yml'
   pull_request:
     branches: [ main ]
     paths:
-      - '**'
+      - 'API/**'
+      - '.github/workflows/deploy-api.yml'
 
 env:
   AWS_REGION: eu-north-1
@@ -64,7 +66,7 @@ jobs:
       run: dotnet restore ApiLambda.csproj
 
     - name: Build and publish
-      run: dotnet publish -c Release -r linux-x64 --self-contained
+      run: dotnet publish -c Release
 
     - name: Build Docker image
       env:
