@@ -4,8 +4,12 @@ using Amazon.Lambda.Serialization.SystemTextJson;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add logging
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+
 // Add AWS Lambda support with proper JSON serialization
-builder.Services.AddAWSLambdaHosting(LambdaEventSource.HttpApi);
+builder.Services.AddAWSLambdaHosting(LambdaEventSource.RestApi);
 
 // Add DynamoDB
 builder.Services.AddAWSService<IAmazonDynamoDB>();
@@ -27,15 +31,36 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Add logging to see if app starts
+var logger = app.Logger;
+logger.LogInformation("Lambda application starting...");
+
 // Configure the HTTP request pipeline
 app.UseCors();
 app.UseRouting();
 
-// API Routes for CRUD operations
-app.MapGet("/items", async (IItemService itemService) =>
+// Health check endpoint
+app.MapGet("/", () =>
 {
-    var items = await itemService.GetAllItemsAsync();
-    return Results.Ok(items);
+    logger.LogInformation("Health check endpoint called");
+    return Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow });
+});
+
+// API Routes for CRUD operations
+app.MapGet("/items", async (IItemService itemService, ILogger<Program> logger) =>
+{
+    logger.LogInformation("GET /items called");
+    try
+    {
+        var items = await itemService.GetAllItemsAsync();
+        logger.LogInformation($"Retrieved {items?.Count() ?? 0} items");
+        return Results.Ok(items);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Error in GET /items");
+        return Results.Problem("Internal server error");
+    }
 });
 
 // REST API endpoints for CRUD operations
