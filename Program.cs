@@ -61,9 +61,9 @@ app.MapGet("/", () =>
 });
 
 // API Routes for CRUD operations
-app.MapGet("/items", async (IItemService itemService, ILogger<Program> logger) =>
+app.MapGet("/api/items", async (IItemService itemService, ILogger<Program> logger) =>
 {
-    logger.LogInformation("GET /items called");
+    logger.LogInformation("GET /api/items called");
     try
     {
         var items = await itemService.GetAllItemsAsync();
@@ -72,31 +72,31 @@ app.MapGet("/items", async (IItemService itemService, ILogger<Program> logger) =
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "Error in GET /items");
+        logger.LogError(ex, "Error in GET /api/items");
         return Results.Problem("Internal server error");
     }
 });
 
 // REST API endpoints for CRUD operations
-app.MapGet("/items/{id}", async (string id, IItemService itemService) =>
+app.MapGet("/api/items/{id}", async (string id, IItemService itemService) =>
 {
     var item = await itemService.GetItemAsync(id);
     return item != null ? Results.Ok(item) : Results.NotFound();
 });
 
-app.MapPost("/items", async (ItemRequest request, IItemService itemService) =>
+app.MapPost("/api/items", async (ItemRequest request, IItemService itemService) =>
 {
     var item = await itemService.CreateItemAsync(request);
-    return Results.Created($"/items/{item.Id}", item);
+    return Results.Created($"/api/items/{item.Id}", item);
 });
 
-app.MapPut("/items/{id}", async (string id, ItemRequest request, IItemService itemService) =>
+app.MapPut("/api/items/{id}", async (string id, ItemRequest request, IItemService itemService) =>
 {
     var item = await itemService.UpdateItemAsync(id, request);
     return item != null ? Results.Ok(item) : Results.NotFound();
 });
 
-app.MapDelete("/items/{id}", async (string id, IItemService itemService) =>
+app.MapDelete("/api/items/{id}", async (string id, IItemService itemService) =>
 {
     var success = await itemService.DeleteItemAsync(id);
     return success ? Results.NoContent() : Results.NotFound();
