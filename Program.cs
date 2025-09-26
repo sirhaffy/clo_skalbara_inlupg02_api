@@ -5,7 +5,7 @@ using Amazon.Lambda.Serialization.SystemTextJson;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add AWS Lambda support with proper JSON serialization
-builder.Services.AddAWSLambdaHosting(LambdaEventSource.RestApi);
+builder.Services.AddAWSLambdaHosting(LambdaEventSource.HttpApi);
 
 // Add DynamoDB
 builder.Services.AddAWSService<IAmazonDynamoDB>();
@@ -14,9 +14,21 @@ builder.Services.AddScoped<IDynamoDBContext, DynamoDBContext>();
 // Add services
 builder.Services.AddScoped<IItemService, ItemService>();
 
+// Add CORS for web requests
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
+app.UseCors();
 app.UseRouting();
 
 // API Routes for CRUD operations
