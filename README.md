@@ -1,20 +1,36 @@
-# JSON API Lambda
+# CLO Skalbara Uppgift 02 - API
 
-Minimal .NET 9 Lambda function with REST API for DynamoDB operations.
+## Översikt
+.NET 9 serverless API som körs som AWS Lambda-funktion bakom API Gateway. Hanterar CRUD-operationer för items i DynamoDB.
 
-## Features
-- **AOT Compilation** for faster cold starts
-- **Container-based deployment** on AWS Lambda
-- **REST API** with full CRUD operations
-- **DynamoDB integration** with strongly typed models
-- **Minimal API** design pattern
+## Arkitektur
+```
+API Gateway → Lambda (.NET 9) → DynamoDB
+```
 
-## API Endpoints
-- `GET /items` - Get all items
-- `GET /items/{id}` - Get specific item
-- `POST /items` - Create new item
-- `PUT /items/{id}` - Update existing item
-- `DELETE /items/{id}` - Delete item
+## Endpoints
+- `GET /api/items` - Hämta alla items
+- `POST /api/items` - Skapa nytt item
+- `PUT /api/items/{id}` - Uppdatera item
+- `DELETE /api/items/{id}` - Ta bort item
+
+## Teknologi
+- **.NET 9**: Lambda runtime med AOT compilation
+- **DynamoDB**: NoSQL databas för skalbarhet
+- **API Gateway**: REST API routing
+- **ECR**: Container registry för Lambda
+
+## CI/CD
+GitHub Actions bygger och deployer automatiskt:
+1. Bygg .NET Docker image
+2. Push till Amazon ECR
+3. Uppdatera Lambda-funktion
+4. Deploy API Gateway
+
+## Säkerhet
+- IAM roller med minimal behörighet
+- API Gateway med CORS-konfiguration
+- Miljövariabler för konfiguration
 
 ## Build Commands
 ```bash
@@ -26,27 +42,12 @@ dotnet publish -c Release -r linux-x64 --self-contained
 
 # Build Docker image
 docker build -t api-lambda .
-
-# Tag for ECR (replace with your ECR URI)
-docker tag api-lambda:latest <account-id>.dkr.ecr.<region>.amazonaws.com/api-lambda:latest
-
-# Push to ECR
-docker push <account-id>.dkr.ecr.<region>.amazonaws.com/api-lambda:latest
 ```
 
-## Infrastructure
-IAM roles, DynamoDB table, and Lambda deployment handled by Terraform in `/IaC`.
-
-## CI/CD Pipeline
-Automated deployment pipeline:
-```
-Code Push → GitHub Actions → Build Container → Push to ECR → Update Lambda
-```
-
-### Setup
-1. Deploy infrastructure: `terraform apply` in `/IaC/Terraform`
-2. Configure GitHub secrets with AWS credentials from Terraform output
-3. Push code changes to trigger automated deployment
+## Setup
+1. Deploy infrastructure: `terraform apply` i `/IaC/Terraform`
+2. Konfigurera GitHub secrets med AWS credentials
+3. Push kod-ändringar för att trigga automatisk deployment
 
 ### GitHub Actions Workflow
 - Triggers on pushes to `main` branch affecting `API/**` files

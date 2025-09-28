@@ -92,18 +92,18 @@ jobs:
         run: |
           # Check if Lambda function exists
           if aws lambda get-function --function-name $LAMBDA_FUNCTION_NAME 2>/dev/null; then
-            echo "✅ Lambda function exists - updating code..."
+            echo "Lambda function exists - updating code..."
             aws lambda update-function-code \
               --function-name $LAMBDA_FUNCTION_NAME \
               --image-uri $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-            echo "⏳ Waiting for Lambda update to complete..."
+            echo "Waiting for Lambda update to complete..."
             aws lambda wait function-updated \
               --function-name $LAMBDA_FUNCTION_NAME
-            echo "✅ Lambda function updated successfully!"
+            echo "Lambda function updated successfully!"
 
             # Update API Gateway deployment to reflect Lambda changes
-            echo "🔄 Updating API Gateway deployment..."
+            echo "Updating API Gateway deployment..."
             API_GATEWAY_ID=$(aws apigateway get-rest-apis --query 'items[?name==`clofresva-skalbara-upg02-api`].id' --output text)
 
             if [ -n "$API_GATEWAY_ID" ] && [ "$API_GATEWAY_ID" != "None" ]; then
@@ -113,14 +113,14 @@ jobs:
                 --stage-name prod \
                 --description "Automated deployment after Lambda update - $(date)" \
                 --query 'id' --output text)
-              echo "✅ API Gateway deployment updated: $DEPLOYMENT_ID"
+              echo "API Gateway deployment updated: $DEPLOYMENT_ID"
             else
-              echo "⚠️  API Gateway not found - run IaC workflow first"
+              echo "API Gateway not found - run IaC workflow first"
             fi
           else
-            echo "⚠️  Lambda function not found - this is expected on first run"
-            echo "🔄 ECR image has been pushed and is ready for Terraform to create the Lambda function"
-            echo "💡 Run the IaC workflow after this completes to create the Lambda function"
+            echo "Lambda function not found - this is expected on first run"
+            echo "ECR image has been pushed and is ready for Terraform to create the Lambda function"
+            echo "Run the IaC workflow after this completes to create the Lambda function"
           fi
 
       - name: Output deployment info
@@ -128,18 +128,18 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          echo "🚀 Deployment Summary:"
-          echo "📦 ECR Repository: $ECR_REPOSITORY"
-          echo "🖼️  Image URI: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
-          echo "🖼️  Latest Tag: $ECR_REGISTRY/$ECR_REPOSITORY:latest"
-          echo "⚡ Lambda Function: $LAMBDA_FUNCTION_NAME"
+          echo "Deployment Summary:"
+          echo "ECR Repository: $ECR_REPOSITORY"
+          echo "  Image URI: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          echo "  Latest Tag: $ECR_REGISTRY/$ECR_REPOSITORY:latest"
+          echo "  Lambda Function: $LAMBDA_FUNCTION_NAME"
 
           # Show API Gateway URL if it exists
           API_GATEWAY_ID=$(aws apigateway get-rest-apis --query 'items[?name==`clofresva-skalbara-upg02-api`].id' --output text 2>/dev/null || echo "")
           if [ -n "$API_GATEWAY_ID" ] && [ "$API_GATEWAY_ID" != "None" ]; then
             API_URL="https://$API_GATEWAY_ID.execute-api.eu-north-1.amazonaws.com/prod"
-            echo "🌐 API Gateway URL: $API_URL"
-            echo "🔗 Test endpoints:"
+            echo "API Gateway URL: $API_URL"
+            echo "Test endpoints:"
             echo "   - Health: $API_URL/"
             echo "   - Items:  $API_URL/api/items"
           fi
